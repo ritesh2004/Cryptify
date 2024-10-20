@@ -1,12 +1,29 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import { LoadingScreen } from './src/components/LoadingScreen';
+import { HomeScreen } from './src/screens/app/HomeScreen';
+import { SignupScreen } from './src/screens/authentication/SignupScreen';
+import { LoginScreen } from './src/screens/authentication/LoginScreen';
+import { GalleryScreen } from './src/screens/app/GalleryScreen';
 
 export default function App() {
+  const [loaded] = useFonts({
+    'Montserrat-Bold': require('./assets/static/Montserrat-Bold.ttf'),
+    'Montserrat-Regular': require('./assets/static/Montserrat-Regular.ttf'),
+    'Montserrat-SemiBold': require('./assets/static/Montserrat-SemiBold.ttf'),
+    'Montserrat-Light': require('./assets/static/Montserrat-Light.ttf'),
+  });
+
+  if (!loaded) {
+    return <LoadingScreen/>;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    // <HomeScreen/>
+    // <SignupScreen/>
+    // <LoginScreen/>
+    <GalleryScreen/>
   );
 }
 
