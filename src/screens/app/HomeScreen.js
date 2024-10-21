@@ -3,8 +3,10 @@ import React from 'react';
 import { View,Text, StyleSheet } from 'react-native';
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions';
 import { TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export const HomeScreen = () => {
+  const navigation = useNavigation();
   return (
     <View style={styles.container}>
         <View>
@@ -18,11 +20,11 @@ export const HomeScreen = () => {
 
         
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.buttonText}>Login</Text>
           </TouchableOpacity>
           <Text style={{color: 'white', textAlign: 'center'}}>OR</Text>
-          <TouchableOpacity style={styles.button}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Signup')}>
             <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
         </View>

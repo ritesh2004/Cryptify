@@ -2,8 +2,10 @@ import React, { useState } from 'react'
 import { FlatList, StyleSheet, Text, View,TouchableOpacity } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
 import { Avatar } from '../../components/Avatar'
+import { useNavigation } from '@react-navigation/native'
 
 export const GalleryScreen = () => {
+    const navigation = useNavigation();
     const [selectedAvatar, setSelectedAvatar] = useState(null)
     const avatars = [
         "https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png",
@@ -32,14 +34,16 @@ export const GalleryScreen = () => {
                     numColumns={3}
                     renderItem={({ item }) => {
                         return (
-                            selectedAvatar !== item ? <TouchableOpacity style={styles.avatar} onPress={()=>setSelectedAvatar(item)}><Avatar src={item} /></TouchableOpacity>  : <View style={styles.avatar}> <Avatar src={'https://res.cloudinary.com/drctt42py/image/upload/v1728703895/chatapp-avatars/Avatar_for_Chat_App_1_vccnkb.png'} /> </View>
+                            <TouchableOpacity style={styles.avatar} onPress={()=>setSelectedAvatar(item)}><Avatar src={
+                                selectedAvatar !== item ? item : "https://res.cloudinary.com/drctt42py/image/upload/v1728703895/chatapp-avatars/Avatar_for_Chat_App_1_vccnkb.png"
+                            } height={90} width={90} /></TouchableOpacity> 
                         )
                     }}
                 />
             </View>
 
             <View>
-                <TouchableOpacity style={styles.button}>
+                <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
                     <Text style={styles.buttonText}>Select Avatar</Text>
                 </TouchableOpacity>
             </View>

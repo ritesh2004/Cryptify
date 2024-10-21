@@ -1,38 +1,41 @@
 import React from 'react'
-import { View,Text, StyleSheet, SafeAreaView, TextInput,TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
+import { Avatar } from '../../components/Avatar'
+import { useNavigation } from '@react-navigation/native'
 
 export const SignupScreen = () => {
-  return (
-    <SafeAreaView style={{flex:1}}>
-        <View style={styles.container}>
-            <View style={styles.titleContainer}>
-                <Text style={styles.title}>Sign Up</Text>
-                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Create an account to continue</Text>
-            </View>
+    const navigation = useNavigation();
+    return (
+        <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.container}>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.title}>Sign Up</Text>
+                    <Text style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18 }}>Create an account to continue</Text>
+                </View>
 
-            <View style={styles.formContainer}>
-                <TextInput placeholder="Username" style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TouchableOpacity style={styles.button}>
-                    <Text style={styles.buttonText}>Select Avatar</Text>
-                </TouchableOpacity>
-                <TextInput placeholder="Email" style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TextInput placeholder="Password" secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TextInput placeholder="Confirm Password" secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-            </View>
+                <View style={styles.formContainer}>
+                    <TouchableOpacity onPress={() => navigation.navigate("Gallery")}>
+                        <Avatar src={"https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png"} height={90} width={90} />
+                    </TouchableOpacity>
+                    <TextInput placeholder="Username" style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                    <TextInput placeholder="Email" style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                    <TextInput placeholder="Password" secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                    <TextInput placeholder="Confirm Password" secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                </View>
 
-            <View style={{height:responsiveHeight(10)}}>
-                <TouchableOpacity style={styles.button}>
-                    <Text style={styles.buttonText}>Sign Up</Text>
-                </TouchableOpacity>
-            </View>
+                <View style={{ height: responsiveHeight(10) }}>
+                    <TouchableOpacity style={styles.button}>
+                        <Text style={styles.buttonText}>Sign Up</Text>
+                    </TouchableOpacity>
+                </View>
 
-            <View style={{height:responsiveHeight(10)}}>
-                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Already have an account? <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18}}>Login</Text></Text>
+                <View style={{ height: responsiveHeight(10) }}>
+                    <Text style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18 }}>Already have an account? <Text style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18 }}>Login</Text></Text>
+                </View>
             </View>
-        </View>
-    </SafeAreaView>
-  )
+        </SafeAreaView>
+    )
 }
 
 const styles = StyleSheet.create({

@@ -6,6 +6,11 @@ import { HomeScreen } from './src/screens/app/HomeScreen';
 import { SignupScreen } from './src/screens/authentication/SignupScreen';
 import { LoginScreen } from './src/screens/authentication/LoginScreen';
 import { GalleryScreen } from './src/screens/app/GalleryScreen';
+import { ChatList } from './src/screens/app/ChatList';
+import { ChatRoom } from './src/screens/app/ChatRoom';
+import NavStacks from './src/navigations/NavStacks';
+import { NavigationContainer } from '@react-navigation/native';
+import Tabs from './src/navigations/Tabs';
 
 export default function App() {
   const [loaded] = useFonts({
@@ -16,14 +21,21 @@ export default function App() {
   });
 
   if (!loaded) {
-    return <LoadingScreen/>;
+    return <LoadingScreen />;
   }
 
   return (
     // <HomeScreen/>
-    // <SignupScreen/>
+    <SignupScreen/>
     // <LoginScreen/>
-    <GalleryScreen/>
+    // <GalleryScreen/>
+    // <ChatList/>
+    // <ChatRoom/>
+    // <NavigationContainer>
+
+    //   <NavStacks />
+    //   {/* <Tabs/> */}
+    // </NavigationContainer>
   );
 }
 

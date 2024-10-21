@@ -1,7 +1,21 @@
 import React, { useState } from 'react'
 import { Image, View, StyleSheet, TouchableOpacity } from 'react-native'
 
-export const Avatar = ({src}) => {
+export const Avatar = ({src,height,width}) => {
+  const styles = StyleSheet.create({
+    avatar: {
+        width: width,
+        height: height,
+        borderRadius: 100,
+    },
+    image: {
+        width: width,
+        height: height,
+        borderRadius: 100,
+        borderColor: '#7FFFAB',
+        borderWidth: 3,
+    }
+});
   return (
     <View style={styles.avatar}>
         {/* Avatar component */}
@@ -9,19 +23,3 @@ export const Avatar = ({src}) => {
     </View>
   )
 }
-
-
-const styles = StyleSheet.create({
-    avatar: {
-        width: 90,
-        height: 90,
-        borderRadius: 100,
-    },
-    image: {
-        width: 90,
-        height: 90,
-        borderRadius: 100,
-        borderColor: '#7FFFAB',
-        borderWidth: 3,
-    }
-});
