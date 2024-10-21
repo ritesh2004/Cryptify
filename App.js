@@ -26,16 +26,16 @@ export default function App() {
 
   return (
     // <HomeScreen/>
-    <SignupScreen/>
+    // <SignupScreen/>
     // <LoginScreen/>
     // <GalleryScreen/>
     // <ChatList/>
     // <ChatRoom/>
-    // <NavigationContainer>
+    <NavigationContainer>
 
-    //   <NavStacks />
-    //   {/* <Tabs/> */}
-    // </NavigationContainer>
+      <NavStacks />
+      {/* <Tabs/> */}
+    </NavigationContainer>
   );
 }
 

@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     textContainer: {
-        height: responsiveHeight(17),
+        height: responsiveHeight(14),
         justifyContent: 'flex-end',
         backgroundColor: '#495057',
         width: responsiveWidth(100),
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
         textAlign: 'start',
     },
     flatlist: {
-        height: responsiveHeight(95),
+        height: responsiveHeight(85),
         justifyContent: 'center',
         alignItems: 'center',
     },

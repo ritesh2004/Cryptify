@@ -15,7 +15,13 @@ const Stack = createNativeStackNavigator();
 const NavStacks = () => {
   return (
     // <NavigationContainer>
-        <Stack.Navigator initialRouteName='TabScreen'>
+        <Stack.Navigator initialRouteName='TabScreen'
+          screenOptions={{
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            animation: 'slide_from_right',
+          }}
+        >
             <Stack.Screen name="TabScreen" component={Tabs} options={{headerShown:false}} />
             <Stack.Screen name="Login" component={LoginScreen} options={{headerShown:false}} />
             <Stack.Screen name="Signup" component={SignupScreen} options={{headerShown:false}} />
