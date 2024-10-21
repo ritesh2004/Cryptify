@@ -1,10 +1,35 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { FlatList, View, Text,StyleSheet } from 'react-native'
 import { Chats } from '../../components/Chats'
 import { responsiveHeight, responsiveScreenWidth, responsiveWidth } from 'react-native-responsive-dimensions'
+import { fetchAllUsers } from '../../apis/fetchAllUsers'
+import { useAppSelector } from '../../redux/hooks'
 
 export const ChatList = () => {
-    const chats = [1,2,3,4,5,6,7,8,9,10]
+    // States
+    const [chats, setChats] = useState();
+
+    // Selectors
+    const selector = useAppSelector(state => state.token);
+
+    // Functions
+    // Fetch chats
+    const fetchChats = async () => {
+        try {
+            // Fetch chats
+            const data = await fetchAllUsers(selector);
+            // console.log(data);
+            setChats(data?.users);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    // UseEffect
+    useEffect(() => {
+        fetchChats();
+    },[])
+
     return (
         <View style={styles.container}>
             {/* Chats */}
@@ -15,10 +40,10 @@ export const ChatList = () => {
             <View style={styles.flatlist}>
                 <FlatList 
                     data={chats}
-                    keyExtractor={(item) => item.toString()}
+                    keyExtractor={(item) => item.id}
                     renderItem={({ item }) => {
                         return (
-                            <Chats/>
+                            <Chats avatar={item?.photoURL} username={item?.username} lastseen={item?.lastseen}/>
                         )
                     }}
                 />

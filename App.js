@@ -11,6 +11,8 @@ import { ChatRoom } from './src/screens/app/ChatRoom';
 import NavStacks from './src/navigations/NavStacks';
 import { NavigationContainer } from '@react-navigation/native';
 import Tabs from './src/navigations/Tabs';
+import { Provider } from 'react-redux';
+import store from './src/redux/store';
 
 export default function App() {
   const [loaded] = useFonts({
@@ -31,11 +33,13 @@ export default function App() {
     // <GalleryScreen/>
     // <ChatList/>
     // <ChatRoom/>
-    <NavigationContainer>
+    <Provider store={store}>
+      <NavigationContainer>
 
-      <NavStacks />
-      {/* <Tabs/> */}
-    </NavigationContainer>
+        <NavStacks />
+        {/* <Tabs/> */}
+      </NavigationContainer>
+    </Provider>
   );
 }
 

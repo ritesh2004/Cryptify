@@ -1,21 +1,47 @@
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Avatar } from '../../components/Avatar'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
+import { useAppSelector } from '../../redux/hooks'
 
 const ProfileScreen = () => {
+    // Navigation
     const navigation = useNavigation();
+    const route = useRoute();
     
+    // States
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [avatar, setAvatar] = useState('https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png');
+
+    // Selectors
+    const usernameSelector = useAppSelector(state => state.user.username);
+    const emailSelector = useAppSelector(state => state.user.email);
+    const avatarSelector = useAppSelector(state => state.user.photoURL);
+
+    // useEffect
+    useEffect(() => {
+        setUsername(usernameSelector);
+        setEmail(emailSelector);
+        setAvatar(avatarSelector);
+    },[usernameSelector, emailSelector, avatarSelector])
+
+    useEffect(() => {
+        if (route.params?.avatar) {
+            setAvatar(route.params.avatar);
+        }
+    },[route.params?.avatar])
+
     return (
         <View style={styles.container}>
             <View style={styles.empty} />
             <View style={styles.inputContainer}>
             <TouchableOpacity onPress={()=>navigation.navigate("Gallery")}>
-                <Avatar src={'https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png'} height={150} width={150} />
+                <Avatar src={avatar} height={150} width={150} />
             </TouchableOpacity>
-                <TextInput placeholder="Username" style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TextInput placeholder="Email" style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
+                <TextInput placeholder="Username" value={username} onChangeText={setUsername} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
+                <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
             </View>
 
             <View style={styles.buttonContainer}>

@@ -3,15 +3,16 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Avatar } from './Avatar'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
 import { useNavigation } from '@react-navigation/native'
+import moment from 'moment'
 
-export const Chats = () => {
+export const Chats = ({ avatar,username,lastseen }) => {
     const navigation = useNavigation();
   return (
-    <TouchableOpacity style={styles.container} onPress={()=>navigation.navigate('Chatroom')}>
-        <Avatar src={'https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png'} height={50} width={50} />
+    <TouchableOpacity style={styles.container} onPress={()=>navigation.navigate('Chatroom',{avatar,username})}>
+        <Avatar src={avatar} height={50} width={50} />
         <View style={styles.textContainer}>
-            <Text style={styles.text}>Jon Doe</Text>
-            <Text style={styles.lastSeen}>Start Chat</Text>
+            <Text style={styles.text}>{username}</Text>
+            <Text style={styles.lastSeen}>{lastseen ? "Lastseen at " + moment(lastseen).format('h:mm A, MMMM Do') : "Start your chat"}</Text>
         </View>
     </TouchableOpacity>
   )
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'start',
         gap: 2
     },
     text: {

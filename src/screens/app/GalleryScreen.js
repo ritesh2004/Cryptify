@@ -43,7 +43,7 @@ export const GalleryScreen = () => {
             </View>
 
             <View>
-                <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+                <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Signup",{avatar:selectedAvatar})}>
                     <Text style={styles.buttonText}>Select Avatar</Text>
                 </TouchableOpacity>
             </View>

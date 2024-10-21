@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   StyleSheet,
@@ -13,8 +13,23 @@ import {
 import { Avatar } from '../../components/Avatar';
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions';
 import Feather from '@expo/vector-icons/Feather';
+import { useRoute } from '@react-navigation/native';
 
 export const ChatRoom = () => {
+  // Navigation
+  const route = useRoute();
+
+  // States
+  const [avatar, setAvatar] = useState('https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png');
+  const [username, setUsername] = useState('Jon Doe');
+
+  //useEffect
+  useEffect(() => {
+    if (route.params?.avatar) {
+      setAvatar(route.params.avatar);
+      setUsername(route.params.username);
+    }
+  }, [route.params?.avatar, route.params?.username]);
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -26,12 +41,12 @@ export const ChatRoom = () => {
         <View style={styles.headerContainer}>
           <View style={{ flexDirection: 'row', gap: 10, padding: 10 }}>
             <Avatar
-              src={'https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png'}
+              src={avatar}
               height={50}
               width={50}
             />
             <View style={{ flexDirection: 'column' }}>
-              <Text style={styles.name}>Jon Doe</Text>
+              <Text style={styles.name}>{username}</Text>
               <Text style={styles.status}>Offline</Text>
             </View>
           </View>

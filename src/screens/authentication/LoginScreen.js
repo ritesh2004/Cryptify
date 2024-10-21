@@ -1,8 +1,39 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { View,Text, StyleSheet, SafeAreaView, TextInput,TouchableOpacity } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
+import { login } from '../../apis/userAuthentication';
+import { loginSuccess } from '../../redux/slices/LoginSlice';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { useNavigation } from '@react-navigation/native';
 
 export const LoginScreen = () => {
+    // Navigation
+    const navigation = useNavigation();
+    // States
+    const [user, setUser] = useState('');
+    const [password, setPassword] = useState('');
+
+    // Dispatch
+    const dispatch = useAppDispatch();
+    // Selector
+    const selector = useAppSelector(state => state.token);
+    useEffect(()=>{
+        console.log(selector);
+    },[selector])
+
+    // Functions
+    // Handle the login process
+    const Login = async () => {
+        try {
+            const data = await login({user, password});
+            dispatch(loginSuccess(data));
+            setUser('');
+            setPassword('');
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
   return (
     <SafeAreaView style={{flex:1}}>
         <View style={styles.container}>
@@ -12,18 +43,18 @@ export const LoginScreen = () => {
             </View>
 
             <View style={styles.formContainer}>
-                <TextInput placeholder="Username or Email" style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TextInput placeholder="Password" secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
+                <TextInput placeholder="Username or Email" value={user} onChangeText={setUser} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
+                <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
             </View>
 
             <View style={{height:responsiveHeight(10)}}>
-                <TouchableOpacity style={styles.button}>
+                <TouchableOpacity style={styles.button} onPress={Login}>
                     <Text style={styles.buttonText}>Log In</Text>
                 </TouchableOpacity>
             </View>
 
             <View style={{height:responsiveHeight(10)}}>
-                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Don't have an account? <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18}}>Create One</Text></Text>
+                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Don't have an account? <Text onPress={()=>navigation.navigate('Signup')} style={{color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18}}>Create One</Text></Text>
             </View>
         </View>
     </SafeAreaView>
