@@ -5,14 +5,14 @@ import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimen
 import { useNavigation } from '@react-navigation/native'
 import moment from 'moment'
 
-export const Chats = ({ avatar,username,lastseen }) => {
+export const Chats = ({ recipient,socket }) => {
     const navigation = useNavigation();
   return (
-    <TouchableOpacity style={styles.container} onPress={()=>navigation.navigate('Chatroom',{avatar,username})}>
-        <Avatar src={avatar} height={50} width={50} />
+    <TouchableOpacity style={styles.container} onPress={()=>navigation.navigate('Chatroom',{recipient,socket})}>
+        <Avatar src={recipient?.photoURL} height={50} width={50} />
         <View style={styles.textContainer}>
-            <Text style={styles.text}>{username}</Text>
-            <Text style={styles.lastSeen}>{lastseen ? "Lastseen at " + moment(lastseen).format('h:mm A, MMMM Do') : "Start your chat"}</Text>
+            <Text style={styles.text}>{recipient?.username}</Text>
+            <Text style={styles.lastSeen}>{recipient?.lastseen ? "Lastseen at " + moment(recipient?.lastseen).format('h:mm A, MMMM Do') : "Start your chat"}</Text>
         </View>
     </TouchableOpacity>
   )

@@ -14,6 +14,12 @@ import Tabs from './src/navigations/Tabs';
 import { Provider } from 'react-redux';
 import store from './src/redux/store';
 
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+]);
+
 export default function App() {
   const [loaded] = useFonts({
     'Montserrat-Bold': require('./assets/static/Montserrat-Bold.ttf'),

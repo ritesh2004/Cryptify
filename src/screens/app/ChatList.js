@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { FlatList, View, Text,StyleSheet } from 'react-native'
+import { FlatList, View, Text, StyleSheet } from 'react-native'
 import { Chats } from '../../components/Chats'
 import { responsiveHeight, responsiveScreenWidth, responsiveWidth } from 'react-native-responsive-dimensions'
 import { fetchAllUsers } from '../../apis/fetchAllUsers'
 import { useAppSelector } from '../../redux/hooks'
+import { useSocketConnection } from '../../socket/useSockets'
 
 export const ChatList = () => {
     // States
@@ -11,6 +12,7 @@ export const ChatList = () => {
 
     // Selectors
     const selector = useAppSelector(state => state.token);
+    const user = useAppSelector(state => state.user);
 
     // Functions
     // Fetch chats
@@ -28,7 +30,10 @@ export const ChatList = () => {
     // UseEffect
     useEffect(() => {
         fetchChats();
-    },[])
+    }, [])
+
+    // Fetching socket connection
+    const { socket, status, socketId, isConnected } = useSocketConnection(user?.id);
 
     return (
         <View style={styles.container}>
@@ -38,12 +43,12 @@ export const ChatList = () => {
             </View>
 
             <View style={styles.flatlist}>
-                <FlatList 
+                <FlatList
                     data={chats}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => {
                         return (
-                            <Chats avatar={item?.photoURL} username={item?.username} lastseen={item?.lastseen}/>
+                            <Chats recipient={item} socket={socket} />
                         )
                     }}
                 />
