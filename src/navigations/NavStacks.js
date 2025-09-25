@@ -10,11 +10,13 @@ import Tabs from './Tabs';
 import { ChatRoom } from '../screens/app/ChatRoom';
 import { GalleryScreen } from '../screens/app/GalleryScreen';
 import { useAppSelector } from '../redux/hooks';
+import { clearPersistedStorage } from '../redux/store';
+import { SockProvider } from '../contexts/SockContext';
 
 const Stack = createNativeStackNavigator();
 
 const NavStacks = () => {
-  const isLoggedIn = useAppSelector(state => state.isLoggedIn);
+  const isLoggedIn = useAppSelector(state => state.login.isLoggedIn);
 
   if (!isLoggedIn) {
     return (
@@ -32,19 +34,21 @@ const NavStacks = () => {
       </Stack.Navigator>
     )
   }
-
+  // clearPersistedStorage();
   return (
-    <Stack.Navigator initialRouteName='Tabs'
-      screenOptions={{
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Chatroom" component={ChatRoom} options={{ headerShown: false }} />
-      <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
-    </Stack.Navigator>
+    <SockProvider>
+      <Stack.Navigator initialRouteName='Tabs'
+        screenOptions={{
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+        <Stack.Screen name="Chatroom" component={ChatRoom} options={{ headerShown: false }} />
+        <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
+      </Stack.Navigator>
+    </SockProvider>
   )
 
 }

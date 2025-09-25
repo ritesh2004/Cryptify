@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   StyleSheet,
@@ -8,7 +8,6 @@ import {
   View,
   Platform,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   FlatList,
 } from 'react-native';
@@ -22,6 +21,14 @@ import { decrypt } from '../../utils/decryption';
 import { fetchAllMessages } from '../../apis/fetchAllmessages';
 import { postMessage } from '../../apis/postMessage';
 import { useSocketConnection } from '../../socket/useSockets';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  insertRealtimeMessage,
+  getMessagesForUsers
+} from '../../utils/databaseUtils';
+import SockContext from '../../contexts/SockContext';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import { useSQLiteContext } from 'expo-sqlite';
 
 export const ChatRoom = () => {
   // Navigation
@@ -31,18 +38,26 @@ export const ChatRoom = () => {
   const [avatar, setAvatar] = useState('https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png');
   const [username, setUsername] = useState('Jon Doe');
   const [recipient, setRecipient] = useState(null);
-  const [socket, setSocket] = useState(null);
+  // const [socket, setSocket] = useState(null);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [message, setMessage] = useState("");
   const [allmessages, setAllMessages] = useState([]);
+  const [isDecoding, setIsDecoding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [msgLength, setMsgLength] = useState(0);
+
+  const db = useSQLiteContext();
+
+  // Socket connection
+  const { socket } = useSocketConnection(user?.id);
 
   // Flatlist ref
   const flatListRef = useRef(null);
 
   // Selectors for user and token
-  const selectorToken = useAppSelector(state => state.token);
-  const selectorUser = useAppSelector(state => state.user);
+  const selectorToken = useAppSelector(state => state.login.token);
+  const selectorUser = useAppSelector(state => state.login.user);
 
   // Fucntions
   // Encrypt message
@@ -60,10 +75,19 @@ export const ChatRoom = () => {
   // Send message
   const sendMessage = async () => {
     try {
-      if (!message) return;
-      setAllMessages((prev) => [...prev, { message, recipaent: recipient }]);
-      // Encrypt message
-      const encryptedMessage = encryptMessage(message);
+      if (!message || !db) return;
+
+      const messageToSend = message;
+      setMessage("");
+
+      // Add message to UI immediately
+      setAllMessages((prev) => [...prev, { message: messageToSend, recipaent: recipient }]);
+
+      // Store decrypted message in local database
+      await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend);
+
+      // Encrypt message for transmission
+      const encryptedMessage = encryptMessage(messageToSend);
       if (!encryptedMessage) {
         console.error("Failed to encrypt message");
         return;
@@ -75,7 +99,6 @@ export const ChatRoom = () => {
       });
 
       await postMessage(user?.id, recipient?.id, encryptedMessage, token);
-      setMessage("");
     } catch (error) {
       console.log(error);
     }
@@ -86,11 +109,11 @@ export const ChatRoom = () => {
 
   //useEffect
   useEffect(() => {
-    if (route.params?.recipient || route.params?.socket) {
+    if (route.params?.recipient) {
       setRecipient(route.params?.recipient);
-      setSocket(route.params?.socket);
+      // setSocket(route.params?.socket);
     }
-  }, [route.params?.recipient, route.params?.socket]);
+  }, [route.params?.recipient]);
 
   useEffect(() => {
     setUser(selectorUser);
@@ -99,30 +122,63 @@ export const ChatRoom = () => {
 
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!user || !recipient || !token) return;
-      // console.log("Hello");
-      const data = await fetchAllMessages(user?.id, recipient?.id, token);
-      // console.log(data);
-      if (data?.chats) {
-        const messages = data.chats.map((msg) => {
-          if (msg.from_id === user.id) {
-            return {
-              message: decryptMessage(msg.message, true),
-              recipaent: { email: recipient.email },
-            };
-          } else {
-            return {
-              message: decryptMessage(msg.message, false),
-              recipaent: { email: user.email },
-            };
+      if (!user || !recipient || !token || !db) return;
+
+      try {
+        // First, try to load messages from local database
+        const localMessages = await getMessagesForUsers(db, user.id, recipient.id);
+
+        if (localMessages && localMessages.length > 0) {
+          // Convert local messages to UI format
+          const formattedLocalMessages = localMessages.map((msg) => ({
+            message: msg.message,
+            recipaent: {
+              email: msg.from_id === user.id ? recipient.email : user.email
+            },
+          }));
+          setAllMessages(formattedLocalMessages);
+          console.log(`Loaded ${localMessages.length} messages from local database`);
+        } else {
+          // Fallback: fetch from server and decrypt
+          console.log("No local messages found, fetching from server...");
+          setIsLoading(true);
+          const data = await fetchAllMessages(user?.id, recipient?.id, token);
+
+          console.log("Fetched messages from server:", data);
+
+          if (data?.chats) {
+            setIsLoading(false);
+            setIsDecoding(true);
+            setMsgLength(data.chats.length);
+            const messages = data.chats.map((msg) => {
+              if (msg.from_id === user.id) {
+                return {
+                  message: decryptMessage(msg.message, true),
+                  recipaent: { email: recipient.email },
+                };
+              } else {
+                return {
+                  message: decryptMessage(msg.message, false),
+                  recipaent: { email: user.email },
+                };
+              }
+            });
+            setAllMessages(messages);
+
+            // Store fetched messages in local database
+            messages.forEach(async (msg, index) => {
+              await insertRealtimeMessage(db, msg.recipaent.email === recipient.email ? user.id : recipient.id, msg.recipaent.email === recipient.email ? recipient.id : user.id, msg.message);
+            });
+            setIsDecoding(false);
+            console.log(`Loaded ${messages.length} messages from server`);
           }
-        });
-        // console.log(messages);
-        setAllMessages(messages);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
       }
     }
     fetchMessages();
-  }, [recipient, user, token]);
+  }, [recipient, user, token, db]);
 
   // Scroll to bottom when new messages are added
   useEffect(() => {
@@ -133,17 +189,22 @@ export const ChatRoom = () => {
 
   // Handle incoming messages
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !db) return;
 
     const handleReceiveMessage = async (msg) => {
       try {
         // console.log("Received message:", msg);
         const decryptedMessage = decryptMessage(msg.message, false);
         if (decryptedMessage) {
+          // Add to UI
+          // console.log("Decrypted message:", decryptedMessage);
           setAllMessages((prev) => [
             ...prev,
             { message: decryptedMessage, recipaent: msg.recipaent },
           ]);
+          // console.log(msg);
+          // Store decrypted message in local database
+          await insertRealtimeMessage(db, recipient?.id, user?.id, decryptedMessage);
         }
       } catch (error) {
         console.error("Error handling received message:", error);
@@ -155,7 +216,7 @@ export const ChatRoom = () => {
     return () => {
       socket.off("receive-message", handleReceiveMessage);
     };
-  }, [socket]);
+  }, [socket, db, user]);
 
 
   return (
@@ -163,7 +224,7 @@ export const ChatRoom = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
       >
         {/* Header */}
         <View style={styles.headerContainer}>
@@ -182,7 +243,7 @@ export const ChatRoom = () => {
 
         {/* Chat Messages */}
         <View style={styles.roomContainer}>
-          <FlatList
+          {!allmessages.length == 0 ? <FlatList
             data={allmessages}
             keyExtractor={(item, index) => index.toString()}
             renderItem={({ item }) => {
@@ -196,7 +257,11 @@ export const ChatRoom = () => {
             }}
             ref={flatListRef}
             onContentSizeChange={() => flatListRef.current.scrollToEnd({ animated: true })}
-          />
+          /> : <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <AntDesign name="cloud-download" size={50} color="#7FFFAB" />
+            <Text style={{ color: '#7FFFAB', marginTop: 10 }}>{isLoading ? `Loading messages...` : isDecoding ? `Decrypting ${msgLength} messages...` : `No messages found`}</Text>
+          </View>
+          }
         </View>
 
         {/* Input */}
@@ -230,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#09090b',
   },
   headerContainer: {
-    height: responsiveHeight(15),
+    height: responsiveHeight(10),
     width: responsiveWidth(100),
     justifyContent: 'flex-end',
     backgroundColor: '#495057',

@@ -10,11 +10,11 @@ const useSocketConnection = (userId) => {
     const [socketId, setSocketId] = useState(null);
 
     // Selectors
-    const token = useAppSelector(state => state.token);
+    const token = useAppSelector(state => state.login.token);
 
     // Initialize socket connection
     useEffect(() => {
-        const newSocket = io("http://192.168.1.4:5000", {
+        const newSocket = io(process.env.EXPO_PUBLIC_SOCKET_URL, {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,

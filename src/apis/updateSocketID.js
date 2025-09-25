@@ -4,7 +4,7 @@ import axios from "axios";
 
 export const updateSocketID = async (socketId, token) => {
     try {
-        const response = await axios.post("http://192.168.1.4:5000/api/v1/user/edit/socket", {
+        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/user/edit/socket`, {
             socketId
         }, {
             headers: {

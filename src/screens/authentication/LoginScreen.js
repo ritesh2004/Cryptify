@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { View,Text, StyleSheet, SafeAreaView, TextInput,TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
 import { login } from '../../apis/userAuthentication';
 import { loginSuccess } from '../../redux/slices/LoginSlice';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const LoginScreen = () => {
     // Navigation
@@ -12,53 +13,64 @@ export const LoginScreen = () => {
     // States
     const [user, setUser] = useState('');
     const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     // Dispatch
     const dispatch = useAppDispatch();
     // Selector
-    const selector = useAppSelector(state => state.token);
-    useEffect(()=>{
+    const selector = useAppSelector(state => state.login.token);
+    useEffect(() => {
         console.log(selector);
-    },[selector])
+    }, [selector])
 
     // Functions
     // Handle the login process
     const Login = async () => {
         try {
-            const data = await login({user, password});
+            const data = await login({ user, password });
+            console.log("Success: ", data);
+
+            if (!data) {
+                setErrorMessage('Invalid username or password');
+                return;
+            }
+
             dispatch(loginSuccess(data));
             setUser('');
             setPassword('');
         } catch (error) {
-            console.log(error);
+            console.log("Error: ", error);
+            setErrorMessage('Invalid username or password');
         }
     }
 
-  return (
-    <SafeAreaView style={{flex:1}}>
-        <View style={styles.container}>
-            <View style={styles.titleContainer}>
-                <Text style={styles.title}>Log In</Text>
-                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Log in to your account</Text>
-            </View>
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#09090b' }}>
+            <View style={styles.container}>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.title}>Log In</Text>
+                    <Text style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18 }}>Log in to your account</Text>
+                </View>
 
-            <View style={styles.formContainer}>
-                <TextInput placeholder="Username or Email" value={user} onChangeText={setUser} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-                <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'}/>
-            </View>
+                <View style={styles.formContainer}>
+                    <TextInput placeholder="Username or Email" value={user} onChangeText={setUser} style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                    <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry={true} style={styles.textInput} placeholderTextColor={'#7FFFAB'} />
+                    {errorMessage.length > 0 && <Text style={{ color: 'red', fontFamily: 'Montserrat-Regular', fontSize: 16 }}>{errorMessage}</Text>}
+                </View>
 
-            <View style={{height:responsiveHeight(10)}}>
-                <TouchableOpacity style={styles.button} onPress={Login}>
-                    <Text style={styles.buttonText}>Log In</Text>
-                </TouchableOpacity>
-            </View>
 
-            <View style={{height:responsiveHeight(10)}}>
-                <Text style={{color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18}}>Don't have an account? <Text onPress={()=>navigation.navigate('Signup')} style={{color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18}}>Create One</Text></Text>
+                <View style={{ height: responsiveHeight(10) }}>
+                    <TouchableOpacity style={styles.button} onPress={Login}>
+                        <Text style={styles.buttonText}>Log In</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={{ height: responsiveHeight(10) }}>
+                    <Text style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Regular', fontSize: 18 }}>Don't have an account? <Text onPress={() => navigation.navigate('Signup')} style={{ color: '#7FFFAB', fontFamily: 'Montserrat-Bold', fontSize: 18 }}>Create One</Text></Text>
+                </View>
             </View>
-        </View>
-    </SafeAreaView>
-  )
+        </SafeAreaView>
+    )
 }
 
 const styles = StyleSheet.create({

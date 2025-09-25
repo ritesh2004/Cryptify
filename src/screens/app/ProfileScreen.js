@@ -16,9 +16,9 @@ const ProfileScreen = () => {
     const [avatar, setAvatar] = useState('https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png');
 
     // Selectors
-    const usernameSelector = useAppSelector(state => state.user.username);
-    const emailSelector = useAppSelector(state => state.user.email);
-    const avatarSelector = useAppSelector(state => state.user.photoURL);
+    const usernameSelector = useAppSelector(state => state.login.user.username);
+    const emailSelector = useAppSelector(state => state.login.user.email);
+    const avatarSelector = useAppSelector(state => state.login.user.photoURL);
 
     // useEffect
     useEffect(() => {

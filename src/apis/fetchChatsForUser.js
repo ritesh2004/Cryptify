@@ -1,13 +1,10 @@
 import axios from "axios";
 
-//----------------------- Fetch All Messages -----------------------//
+//----------------------- Fetch All Messages for Specific User -----------------------//
 
-export const fetchAllMessages = async (senderId, receiverId, token) => {
+export const fetchChatsForUser = async (id, token) => {
     try {
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/chat/get`, {
-            senderId,
-            receiverId
-        },{
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/chat/get/${id}`,{
             headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: 'application/json',

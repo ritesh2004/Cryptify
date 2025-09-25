@@ -13,6 +13,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import Tabs from './src/navigations/Tabs';
 import { Provider } from 'react-redux';
 import store from './src/redux/store';
+import { SQLiteProvider } from 'expo-sqlite'
 
 import { LogBox } from 'react-native';
 
@@ -39,6 +40,24 @@ export default function App() {
     // <GalleryScreen/>
     // <ChatList/>
     // <ChatRoom/>
+    <SQLiteProvider databaseName='cryptify.db' 
+      onInit={async (db) => {
+        // Create chats table if it doesn't exist
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS chats (
+                id INTEGER PRIMARY KEY NOT NULL,
+                from_id INTEGER NOT NULL,
+                to_id INTEGER NOT NULL,
+                message TEXT NOT NULL,
+                message_time TIMESTAMP NOT NULL
+            );
+        `);
+      }}
+      onError={(error) => {
+        console.log("Database initialization failed:", error);
+      }}
+      options={{ useNewConnection: false }}
+    >
     <Provider store={store}>
       <NavigationContainer>
 
@@ -46,6 +65,7 @@ export default function App() {
         {/* <Tabs/> */}
       </NavigationContainer>
     </Provider>
+    </SQLiteProvider>
   );
 }
 

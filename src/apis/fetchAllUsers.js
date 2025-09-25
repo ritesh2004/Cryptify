@@ -4,7 +4,8 @@ import axios from "axios";
 
 export const fetchAllUsers = async (token) => {
     try {
-        const response = await axios.get("http://192.168.1.4:5000/api/v1/users",{
+        console.log(token);
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/users`, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: 'application/json',
