@@ -6,7 +6,6 @@ import { useNavigation, useRoute } from '@react-navigation/native'
 import { register } from '../../apis/userAuthentication'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store';
-import { KeyGenerationLoader } from '../../components/KeyGenerationLoader'
 import { generateKeyPairSync } from '../../utils/keyGenerationWorker'
 
 export const SignupScreen = () => {

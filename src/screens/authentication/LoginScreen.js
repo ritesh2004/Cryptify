@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
-import { login } from '../../apis/userAuthentication';
+import { login, verifyBiometricData } from '../../apis/userAuthentication';
 import { loginSuccess } from '../../redux/slices/LoginSlice';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
+import forge from 'node-forge';
+import dayjs from 'dayjs';
 
 export const LoginScreen = () => {
     // Navigation
@@ -14,6 +18,84 @@ export const LoginScreen = () => {
     const [user, setUser] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+
+    // Biometric Authentication
+    const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+    const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const checkBiometricPreference = async () => {
+            const enabled = await SecureStore.getItemAsync('biometricEnabled');
+            setIsBiometricEnabled(enabled === 'true');
+        };
+        checkBiometricPreference();
+    }, []);
+
+    useEffect(() => {
+        const checkBiometricSupport = async () => {
+            const compatible = await LocalAuthentication.hasHardwareAsync();
+            if (compatible) {
+                const enrolled = await LocalAuthentication.isEnrolledAsync();
+                setIsBiometricSupported(enrolled);
+                return;
+            }
+            setIsBiometricSupported(compatible);
+        };
+        checkBiometricSupport();
+    }, []);
+
+    useEffect(() => {
+        if (isBiometricSupported && isBiometricEnabled) {
+            handleBiometricAuth();
+        }
+    }, [isBiometricSupported]);
+
+    const handleBiometricAuth = async () => {
+        const result = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Login with Biometrics',
+            fallbackLabel: 'Enter Passcode',
+            disableDeviceFallback: false,
+            cancelLabel: 'Cancel',
+        });
+
+        if (result.success) {
+            // Handle successful authentication
+            setIsLoading(true);
+            console.log('Authentication successful');
+            const storedUser = await SecureStore.getItemAsync('user');
+            const privateKey = await SecureStore.getItemAsync('biometricPrivateKey');
+            if (storedUser && privateKey) {
+                const user = JSON.parse(storedUser);
+                console.log("Stored User: ", user);
+                const payload = { user: user?.id, exp: dayjs().add(10, 'minutes').unix() };
+                const md = forge.md.sha256.create();
+                md.update(JSON.stringify(payload), 'utf8');
+                const privateKeyForge = forge.pki.privateKeyFromPem(privateKey);
+                const signature = forge.util.encode64(privateKeyForge.sign(md));
+                const data = await verifyBiometricData({ payload, signature });
+
+                if (data) {
+                    // console.log("Biometric login successful: ", data);
+                    dispatch(loginSuccess(data));
+                    setUser('');
+                    setPassword('');
+                    setErrorMessage('');
+                    setIsLoading(false);
+                } else {
+                    setIsLoading(false);
+                    alert("Biometric authentication failed. Please log in manually.");
+                }
+            }
+            else {
+                setIsLoading(false);
+                alert("Biometric keys or user data not found. Please log in manually.");
+            }
+        } else {
+            // Handle failed authentication
+            console.log('Authentication failed');
+        }
+    };
 
     // Dispatch
     const dispatch = useAppDispatch();
@@ -42,6 +124,12 @@ export const LoginScreen = () => {
             console.log("Error: ", error);
             setErrorMessage('Invalid username or password');
         }
+    }
+
+    if (isLoading) {
+        return <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#09090b' }}>
+            <ActivityIndicator size="large" color="#7FFFAB" />
+        </SafeAreaView>;
     }
 
     return (

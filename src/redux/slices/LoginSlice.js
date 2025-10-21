@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import * as SecureStore from 'expo-secure-store';
 
 // Define the initial state using that type
 const initialState = {
@@ -18,6 +19,12 @@ export const loginSlice = createSlice({
         state.isLoggedIn = true;
         state.token = action.payload.refreshToken;
         state.user = action.payload.user;
+        const dataToBeStored = {
+            id: action.payload.user.id,
+            username: action.payload.user.username,
+            email: action.payload.user.email,
+        }
+        SecureStore.setItemAsync('user', JSON.stringify(dataToBeStored));
     },
 
     logout: (state) => {
