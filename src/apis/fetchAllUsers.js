@@ -11,8 +11,9 @@ export const fetchAllUsers = async (token) => {
                 Accept: 'application/json',
             }
         });
-        return response.data;
+        return response;
     } catch (error) {
-        return error.response.data;
+        console.log(error.response.status);
+        return error.response;
     }
 }

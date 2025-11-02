@@ -16,10 +16,12 @@ import { logout } from '../../redux/slices/LoginSlice'
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { uploadPushToken } from '../../apis/notification';
 import * as SecureStore from 'expo-secure-store';
+import { useSQLiteDevTools } from 'expo-sqlite-devtools';
 
 export const ChatList = () => {
     // Database
     const db = useSQLiteContext();
+    useSQLiteDevTools(db);
     // States
     const [chats, setChats] = useState();
     const [isDbInitialized, setIsDbInitialized] = useState(false);
@@ -39,9 +41,15 @@ export const ChatList = () => {
     const fetchChats = async () => {
         try {
             // Fetch chats
-            const data = await fetchAllUsers(selector);
-            // console.log(data);
-            setChats(data?.users);
+            const {data} = await fetchAllUsers(selector);
+
+            if (data?.status === 200) {
+                setChats(data?.users);
+            }
+            else if (data?.status === 401) {
+                dispatch(logout());
+            }
+            
         } catch (error) {
             console.log(error);
         }

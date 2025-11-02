@@ -52,6 +52,13 @@ export default function App() {
                 message_time TIMESTAMP NOT NULL
             );
         `);
+
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS sync_info (
+                chat_id TEXT NOT NULL,
+                last_synced_at TEXT NOT NULL
+            );
+        `);
       }}
       onError={(error) => {
         console.log("Database initialization failed:", error);

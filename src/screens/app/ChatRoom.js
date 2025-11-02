@@ -26,7 +26,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   insertRealtimeMessage,
   getMessagesForUsers,
-  batchInsertMessages
+  batchInsertMessages,
+  getSyncInfo,
+  updateSyncInfo
 } from '../../utils/databaseUtils';
 import SockContext from '../../contexts/SockContext';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -89,7 +91,7 @@ export const ChatRoom = () => {
       // Store decrypted message in local database
       const timestamp = new Date().toISOString();
       await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend, timestamp);
-
+      await updateSyncInfo(db, `${user.id}_${recipient.id}`, timestamp);
       // Encrypt message for transmission
       const encryptedMessage = encryptMessage(messageToSend);
       if (!encryptedMessage) {
@@ -135,9 +137,16 @@ export const ChatRoom = () => {
       if (!user || !recipient || !token || !db) return;
 
       try {
+        setIsLoading(true);
+        // Generate Chat ID
+        const chatId = `${user.id}_${recipient.id}`;
+        // Get sync info
+        const syncInfo = await getSyncInfo(db, chatId);
+        const afterTime = syncInfo?.last_synced_at || 0;
+        
         // First, try to load messages from local database
         const localMessages = await getMessagesForUsers(db, user.id, recipient.id) || [];
-        const serverResponse = await fetchAllMessages(user?.id, recipient?.id, token);
+        const serverResponse = await fetchAllMessages(user?.id, recipient?.id, afterTime, token);
         const serverChats = serverResponse?.chats || [];
         
         console.log('Local messages count:', localMessages.length);
@@ -145,92 +154,48 @@ export const ChatRoom = () => {
         
         if (serverChats.length === 0 && localMessages.length === 0) {
           console.log('No messages found in either local or server data');
+          setAllMessages([]);
+          setIsLoading(false);
           return;
         }
 
-        // If we have no local messages but have server messages, fetch from server
-        if (localMessages.length === 0 && serverChats.length > 0) {
-          console.log('No local messages found, fetching from server...');
-          await processAndStoreServerMessages(serverChats);
+        if (serverChats.length > 0) {
+          await processAndStoreServerMessages(serverChats, localMessages);
           return;
         }
-
-        const lastServerMessage = serverChats[serverChats.length - 1];
-        const lastLocalMessage = localMessages[localMessages.length - 1];
-
-        // If we have both server and local messages, check timestamps
-        if (localMessages.length > 0 && serverChats.length > 0) {
-          if (!lastServerMessage?.message_time || !lastLocalMessage?.message_time) {
-            console.log('Missing timestamp in message data', {
-              hasServerTimestamp: !!lastServerMessage?.message_time,
-              hasLocalTimestamp: !!lastLocalMessage?.message_time
-            });
-            // If timestamps are missing, fall back to server data
-            await processAndStoreServerMessages(serverChats);
-            return;
-          }
-        }
-
-        let serverLastMessageTime;
-        let localLastMessageTime;
-
-        try {
-          serverLastMessageTime = parseISO(lastServerMessage.message_time);
-          localLastMessageTime = new Date(lastLocalMessage.message_time);
-          
-          console.log('Timestamp comparison:', {
-            serverTime: serverLastMessageTime.toISOString(),
-            localTime: localLastMessageTime.toISOString(),
-            serverRaw: lastServerMessage.message_time,
-            localRaw: lastLocalMessage.message_time
-          });
-        } catch (error) {
-          console.error('Error parsing timestamps:', error);
-          return;
-        }
-
-        const isSameTime = serverLastMessageTime.getTime() === localLastMessageTime.getTime();
-        console.log('Timestamps match:', isSameTime);
-
-        if (localMessages.length > 0 && serverChats.length > 0 && isSameTime) {
-          // Convert local messages to UI format
-          const formattedLocalMessages = localMessages.map((msg) => ({
-            message: msg.message,
-            recipaent: {
-              email: msg.from_id === user.id ? recipient.email : user.email
-            },
-          }));
-          setAllMessages(formattedLocalMessages);
-          console.log(`Loaded ${localMessages.length} messages from local database`);
-        } else {
-          // This handles cases where we have local messages but no server messages
-          // or when timestamps don't match
-          if (serverChats.length > 0) {
-            await processAndStoreServerMessages(serverChats);
-          } else if (localMessages.length > 0) {
-            // If we have local messages but no server messages, use local messages
-            const formattedLocalMessages = localMessages.map((msg) => ({
+        else if (localMessages.length > 0) {
+          const formatted = localMessages.map((msg) => ({
               message: msg.message,
               recipaent: {
                 email: msg.from_id === user.id ? recipient.email : user.email
               },
             }));
-            setAllMessages(formattedLocalMessages);
-            console.log(`Loaded ${formattedLocalMessages.length} messages from local database`);
-          }
+          setIsLoading(false);
+          setAllMessages(formatted);
+          return;
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
+        setIsLoading(false);
       }
     }
     fetchMessages();
   }, [recipient, user, token, db]);
 
-  const processAndStoreServerMessages = async (serverChats) => {
+  const processAndStoreServerMessages = async (serverChats, localChats) => {
     try {
-      setIsLoading(false);
+      setIsLoading(true);
       setIsDecoding(true);
       setMsgLength(serverChats.length);
+
+      const localMessages = localChats.map((msg) => ({
+        message: msg.message,
+        recipaent: {
+          email: msg.from_id === user.id ? recipient.email : user.email
+        },
+      }));
+
+      setAllMessages(localMessages);
       
       const messages = serverChats.map((msg) => {
         const isFromCurrentUser = msg.from_id === user.id;
@@ -242,7 +207,7 @@ export const ChatRoom = () => {
         };
       });
 
-      setAllMessages(messages);
+      setAllMessages((prev)=> [...prev, ...messages]);
 
       // Store fetched messages in local database using batch insert
       const messagesToStore = messages.map((msg) => ({
@@ -254,11 +219,14 @@ export const ChatRoom = () => {
       }));
 
       await batchInsertMessages(db, messagesToStore);
+      await updateSyncInfo(db, `${user.id}_${recipient.id}`, serverChats[serverChats.length - 1].message_time);
       setIsDecoding(false);
+      setIsLoading(false);
       console.log(`Loaded ${messages.length} messages from server`);
     } catch (error) {
       console.error('Error processing server messages:', error);
       setIsDecoding(false);
+      setIsLoading(false);
       // Re-throw to be caught by the parent try-catch
       throw error;
     }
@@ -277,7 +245,7 @@ export const ChatRoom = () => {
 
     const handleReceiveMessage = async (msg) => {
       try {
-        // console.log("Received message:", msg);
+        console.log("Received message:", msg);
         const decryptedMessage = decryptMessage(msg.message, false);
         if (decryptedMessage) {
           // Add to UI
@@ -290,6 +258,7 @@ export const ChatRoom = () => {
           // Store decrypted message in local database with timestamp
           const timestamp = msg.timestamp || new Date().toISOString();
           await insertRealtimeMessage(db, recipient?.id, user?.id, decryptedMessage, timestamp);
+          await updateSyncInfo(db, `${user.id}_${recipient.id}`, timestamp);
         }
       } catch (error) {
         console.error("Error handling received message:", error);
@@ -343,7 +312,7 @@ export const ChatRoom = () => {
             ref={flatListRef}
             onContentSizeChange={() => flatListRef.current.scrollToEnd({ animated: true })}
           /> : <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <AntDesign name="cloud-download" size={50} color="#7FFFAB" />
+            {isLoading ? <ActivityIndicator size="large" color="#7FFFAB" /> : <AntDesign name="cloud-download" size={50} color="#7FFFAB" />}
             <Text style={{ color: '#7FFFAB', marginTop: 10 }}>{isLoading ? `Loading messages...` : isDecoding ? `Decrypting ${msgLength} messages...` : `No messages found`}</Text>
           </View>
           }

@@ -2,9 +2,9 @@ import axios from "axios";
 
 //----------------------- Fetch All Messages -----------------------//
 
-export const fetchAllMessages = async (senderId, receiverId, token) => {
+export const fetchAllMessages = async (senderId, receiverId, afterTime, token) => {
     try {
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/chat/get`, {
+        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/chat/get?after=${afterTime}`, {
             senderId,
             receiverId
         },{
@@ -13,7 +13,7 @@ export const fetchAllMessages = async (senderId, receiverId, token) => {
                 Accept: 'application/json',
             }
         });
-        // console.log("response", response.data);
+        console.log("response", response.data);
         return response.data;
     } catch (error) {
         console.log(error);

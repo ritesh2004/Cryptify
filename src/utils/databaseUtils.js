@@ -21,7 +21,7 @@ export const insertMessage = async (db, messageData) => {
 
         // Insert new message
         await db.runAsync(
-            'INSERT INTO chats (id, from_id, to_id, message, message_time) VALUES (?, ?, ?, ?, ?)',
+            'INSERT OR IGNORE INTO chats (id, from_id, to_id, message, message_time) VALUES (?, ?, ?, ?, ?)',
             [id, from_id, to_id, message, message_time]
         );
 
@@ -71,7 +71,7 @@ export const batchInsertMessages = async (db, messagesArray) => {
 
                     // Insert new message
                     await db.runAsync(
-                        'INSERT INTO chats (id, from_id, to_id, message, message_time) VALUES (?, ?, ?, ?, ?)',
+                        'INSERT OR IGNORE INTO chats (id, from_id, to_id, message, message_time) VALUES (?, ?, ?, ?, ?)',
                         [id, from_id, to_id, message, normalizedTime]
                     );
 
@@ -242,5 +242,54 @@ export const getMessageCount = async (db, userId1, userId2) => {
     } catch (error) {
         console.error("Failed to get message count:", error);
         return 0;
+    }
+};
+
+// Update sync info
+export const updateSyncInfo = async (db, chatId, lastSyncedAt) => {
+    try {
+        if (!db) {
+            console.error("Database is not initialized");
+            return false;
+        }
+
+        const isExist = await db.getFirstAsync(
+            'SELECT * FROM sync_info WHERE chat_id = ?',
+            [chatId]
+        );
+        if (isExist) {
+            await db.runAsync(
+                'UPDATE sync_info SET last_synced_at = ? WHERE chat_id = ?',
+                [lastSyncedAt, chatId]
+            );
+        } else {
+            await db.runAsync(
+                'INSERT INTO sync_info (chat_id, last_synced_at) VALUES (?, ?)',
+                [chatId, lastSyncedAt]
+            );
+        }
+        console.log(`Sync info updated for chat ${chatId}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to update sync info:", error);
+        return false;
+    }
+};
+
+// Get sync info
+export const getSyncInfo = async (db, chatId) => {
+    try {
+        if (!db) {
+            console.error("Database is not initialized");
+            return null;
+        }
+        const result = await db.getFirstAsync(
+            'SELECT * FROM sync_info WHERE chat_id = ?',
+            [chatId]
+        );
+        return result;
+    } catch (error) {
+        console.error("Failed to get sync info:", error);
+        return null;
     }
 };
