@@ -13,7 +13,9 @@ import { setDbName, setIsBackup } from '../../redux/slices/dbSlice'
 import SockContext from '../../contexts/SockContext'
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { logout } from '../../redux/slices/LoginSlice'
-import { initializeDatabase } from '../../utils/databaseUtils'
+import { usePushNotifications } from '../../hooks/usePushNotifications';
+import { uploadPushToken } from '../../apis/notification';
+import * as SecureStore from 'expo-secure-store';
 
 export const ChatList = () => {
     // Database
@@ -21,6 +23,7 @@ export const ChatList = () => {
     // States
     const [chats, setChats] = useState();
     const [isDbInitialized, setIsDbInitialized] = useState(false);
+    const [pushToken, setPushToken] = useState();
 
     // Selectors
     const selector = useAppSelector(state => state.login.token);
@@ -44,15 +47,42 @@ export const ChatList = () => {
         }
     }
 
-    useEffect(() => {
-        console.log("Token")
-        console.log(selector);
-    },[selector])
+    // Upload push token for notification
+    const expoPushToken = usePushNotifications();
+
+    const enableNotification = async () => {
+        try {
+            console.log("Push TOken: ", expoPushToken)
+            const notification_info = await SecureStore.getItemAsync('notification_enabled');
+            const notification_info_parsed = JSON.parse(notification_info);
+            if (!notification_info_parsed?.isEnabled) {
+                console.log(expoPushToken, user.id)
+                if (!expoPushToken || !user.id) return;
+                const res = uploadPushToken({
+                    token: expoPushToken,
+                    userId: user.id
+                }, selector);
+                await SecureStore.setItemAsync('notification_enabled', JSON.stringify({isEnabled: true}));
+            }
+        } catch (error) {
+            console.log(error)
+            alert("Unable to enable notification!");
+        }
+    }
+
+    // useEffect(() => {
+    //     console.log("Token")
+    //     console.log(selector);
+    // },[selector])
 
     // UseEffect
     useEffect(() => {
         fetchChats();
     }, [])
+
+    useEffect(() => {
+        enableNotification();
+    }, [expoPushToken, user])
 
     // Fetch all data from local database
     useEffect(() => {

@@ -1,6 +1,6 @@
 import { fetchChatsForUser } from "../apis/fetchChatsForUser";
 import { DecodeAll } from "./DecodeAll";
-import { insertMessage } from "./databaseUtils";
+import { batchInsertMessages } from "./databaseUtils";
 
 // -------------- Load all data from Remote Database to Local Database --------------
 
@@ -16,18 +16,18 @@ export const loadDatabase = async (db, user, selector) => {
         // Decode all messages
         const decodedChats = DecodeAll(chats, user);
 
-        // Insert data using the new database utility
-        decodedChats.forEach(chat => {
-            insertMessage(db, {
-                id: chat.id,
-                from_id: chat.from_id,
-                to_id: chat.to_id,
-                message: chat.message,
-                message_time: chat.message_time
-            });
-        });
+        // Use batch insert for efficient bulk storage
+        const result = await batchInsertMessages(db, decodedChats);
 
-        console.log(`Loaded ${decodedChats.length} messages to local database`);
+        if (result.success) {
+            console.log(`Successfully loaded ${result.inserted}/${result.total} messages to local database`);
+            if (result.errors) {
+                console.warn(`${result.errors.length} messages failed to insert`);
+            }
+        } else {
+            console.error("Failed to load messages to database:", result.error);
+        }
+
         return decodedChats;
     } catch (error) {
         console.error("Error loading database:", error);

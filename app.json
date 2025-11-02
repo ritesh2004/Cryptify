@@ -18,7 +18,15 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "package": "com.dev_ritesh29.cryptify",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,7 +40,19 @@
           "fingerprintPermission": "Allow Cryptify to use Fingerprint for authentication",
           "biometricPermission": "Allow Cryptify to use Biometrics for authentication"
         }
-      ]
-    ]
+      ],
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f88aeaf9-bdda-45da-8980-c3fa4acd81a8"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f88aeaf9-bdda-45da-8980-c3fa4acd81a8"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { parseISO } from 'date-fns';
 import {
   KeyboardAvoidingView,
   StyleSheet,
@@ -24,11 +25,13 @@ import { useSocketConnection } from '../../socket/useSockets';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   insertRealtimeMessage,
-  getMessagesForUsers
+  getMessagesForUsers,
+  batchInsertMessages
 } from '../../utils/databaseUtils';
 import SockContext from '../../contexts/SockContext';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useSQLiteContext } from 'expo-sqlite';
+import { sendNotification } from '../../apis/notification';
 
 export const ChatRoom = () => {
   // Navigation
@@ -84,7 +87,8 @@ export const ChatRoom = () => {
       setAllMessages((prev) => [...prev, { message: messageToSend, recipaent: recipient }]);
 
       // Store decrypted message in local database
-      await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend);
+      const timestamp = new Date().toISOString();
+      await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend, timestamp);
 
       // Encrypt message for transmission
       const encryptedMessage = encryptMessage(messageToSend);
@@ -99,6 +103,12 @@ export const ChatRoom = () => {
       });
 
       await postMessage(user?.id, recipient?.id, encryptedMessage, token);
+
+      await sendNotification({
+        userId: recipient?.id,
+        title: `${recipient.username} texted you`,
+        body: messageToSend
+      }, selectorToken)
     } catch (error) {
       console.log(error);
     }
@@ -126,9 +136,63 @@ export const ChatRoom = () => {
 
       try {
         // First, try to load messages from local database
-        const localMessages = await getMessagesForUsers(db, user.id, recipient.id);
+        const localMessages = await getMessagesForUsers(db, user.id, recipient.id) || [];
+        const serverResponse = await fetchAllMessages(user?.id, recipient?.id, token);
+        const serverChats = serverResponse?.chats || [];
+        
+        console.log('Local messages count:', localMessages.length);
+        console.log('Server messages count:', serverChats.length);
+        
+        if (serverChats.length === 0 && localMessages.length === 0) {
+          console.log('No messages found in either local or server data');
+          return;
+        }
 
-        if (localMessages && localMessages.length > 0) {
+        // If we have no local messages but have server messages, fetch from server
+        if (localMessages.length === 0 && serverChats.length > 0) {
+          console.log('No local messages found, fetching from server...');
+          await processAndStoreServerMessages(serverChats);
+          return;
+        }
+
+        const lastServerMessage = serverChats[serverChats.length - 1];
+        const lastLocalMessage = localMessages[localMessages.length - 1];
+
+        // If we have both server and local messages, check timestamps
+        if (localMessages.length > 0 && serverChats.length > 0) {
+          if (!lastServerMessage?.message_time || !lastLocalMessage?.message_time) {
+            console.log('Missing timestamp in message data', {
+              hasServerTimestamp: !!lastServerMessage?.message_time,
+              hasLocalTimestamp: !!lastLocalMessage?.message_time
+            });
+            // If timestamps are missing, fall back to server data
+            await processAndStoreServerMessages(serverChats);
+            return;
+          }
+        }
+
+        let serverLastMessageTime;
+        let localLastMessageTime;
+
+        try {
+          serverLastMessageTime = parseISO(lastServerMessage.message_time);
+          localLastMessageTime = new Date(lastLocalMessage.message_time);
+          
+          console.log('Timestamp comparison:', {
+            serverTime: serverLastMessageTime.toISOString(),
+            localTime: localLastMessageTime.toISOString(),
+            serverRaw: lastServerMessage.message_time,
+            localRaw: lastLocalMessage.message_time
+          });
+        } catch (error) {
+          console.error('Error parsing timestamps:', error);
+          return;
+        }
+
+        const isSameTime = serverLastMessageTime.getTime() === localLastMessageTime.getTime();
+        console.log('Timestamps match:', isSameTime);
+
+        if (localMessages.length > 0 && serverChats.length > 0 && isSameTime) {
           // Convert local messages to UI format
           const formattedLocalMessages = localMessages.map((msg) => ({
             message: msg.message,
@@ -139,38 +203,20 @@ export const ChatRoom = () => {
           setAllMessages(formattedLocalMessages);
           console.log(`Loaded ${localMessages.length} messages from local database`);
         } else {
-          // Fallback: fetch from server and decrypt
-          console.log("No local messages found, fetching from server...");
-          setIsLoading(true);
-          const data = await fetchAllMessages(user?.id, recipient?.id, token);
-
-          console.log("Fetched messages from server:", data);
-
-          if (data?.chats) {
-            setIsLoading(false);
-            setIsDecoding(true);
-            setMsgLength(data.chats.length);
-            const messages = data.chats.map((msg) => {
-              if (msg.from_id === user.id) {
-                return {
-                  message: decryptMessage(msg.message, true),
-                  recipaent: { email: recipient.email },
-                };
-              } else {
-                return {
-                  message: decryptMessage(msg.message, false),
-                  recipaent: { email: user.email },
-                };
-              }
-            });
-            setAllMessages(messages);
-
-            // Store fetched messages in local database
-            messages.forEach(async (msg, index) => {
-              await insertRealtimeMessage(db, msg.recipaent.email === recipient.email ? user.id : recipient.id, msg.recipaent.email === recipient.email ? recipient.id : user.id, msg.message);
-            });
-            setIsDecoding(false);
-            console.log(`Loaded ${messages.length} messages from server`);
+          // This handles cases where we have local messages but no server messages
+          // or when timestamps don't match
+          if (serverChats.length > 0) {
+            await processAndStoreServerMessages(serverChats);
+          } else if (localMessages.length > 0) {
+            // If we have local messages but no server messages, use local messages
+            const formattedLocalMessages = localMessages.map((msg) => ({
+              message: msg.message,
+              recipaent: {
+                email: msg.from_id === user.id ? recipient.email : user.email
+              },
+            }));
+            setAllMessages(formattedLocalMessages);
+            console.log(`Loaded ${formattedLocalMessages.length} messages from local database`);
           }
         }
       } catch (error) {
@@ -179,6 +225,44 @@ export const ChatRoom = () => {
     }
     fetchMessages();
   }, [recipient, user, token, db]);
+
+  const processAndStoreServerMessages = async (serverChats) => {
+    try {
+      setIsLoading(false);
+      setIsDecoding(true);
+      setMsgLength(serverChats.length);
+      
+      const messages = serverChats.map((msg) => {
+        const isFromCurrentUser = msg.from_id === user.id;
+        return {
+          message: decryptMessage(msg.message, isFromCurrentUser),
+          recipaent: { email: isFromCurrentUser ? recipient.email : user.email },
+          timestamp: msg.message_time,
+          id: msg.id
+        };
+      });
+
+      setAllMessages(messages);
+
+      // Store fetched messages in local database using batch insert
+      const messagesToStore = messages.map((msg) => ({
+        id: msg.id,
+        from_id: msg.recipaent.email === recipient.email ? user.id : recipient.id,
+        to_id: msg.recipaent.email === recipient.email ? recipient.id : user.id,
+        message: msg.message,
+        message_time: msg.timestamp
+      }));
+
+      await batchInsertMessages(db, messagesToStore);
+      setIsDecoding(false);
+      console.log(`Loaded ${messages.length} messages from server`);
+    } catch (error) {
+      console.error('Error processing server messages:', error);
+      setIsDecoding(false);
+      // Re-throw to be caught by the parent try-catch
+      throw error;
+    }
+  };
 
   // Scroll to bottom when new messages are added
   useEffect(() => {
@@ -203,8 +287,9 @@ export const ChatRoom = () => {
             { message: decryptedMessage, recipaent: msg.recipaent },
           ]);
           // console.log(msg);
-          // Store decrypted message in local database
-          await insertRealtimeMessage(db, recipient?.id, user?.id, decryptedMessage);
+          // Store decrypted message in local database with timestamp
+          const timestamp = msg.timestamp || new Date().toISOString();
+          await insertRealtimeMessage(db, recipient?.id, user?.id, decryptedMessage, timestamp);
         }
       } catch (error) {
         console.error("Error handling received message:", error);

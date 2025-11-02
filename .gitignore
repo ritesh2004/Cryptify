@@ -34,3 +34,9 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# credentials
+criptify-7cad1-firebase-adminsdk-fbsvc-eb9e6bbc5b.json
+
+# google service
+google-services.json
