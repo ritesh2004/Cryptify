@@ -30,10 +30,10 @@ import {
   getSyncInfo,
   updateSyncInfo
 } from '../../utils/databaseUtils';
-import SockContext from '../../contexts/SockContext';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useSQLiteContext } from 'expo-sqlite';
 import { sendNotification } from '../../apis/notification';
+import { useSocket } from '../../contexts/SocketContext';
 
 export const ChatRoom = () => {
   // Navigation
@@ -55,8 +55,10 @@ export const ChatRoom = () => {
   const db = useSQLiteContext();
 
   // Socket connection
-  const { socket } = useSocketConnection(user?.id);
-
+  // const { socket } = useSocketConnection(user?.id, null);
+  const { getSocket, isUserOnline } = useSocket();
+  const socket = getSocket();
+  const isOnline = isUserOnline(recipient?.id);
   // Flatlist ref
   const flatListRef = useRef(null);
 
@@ -88,27 +90,28 @@ export const ChatRoom = () => {
       // Add message to UI immediately
       setAllMessages((prev) => [...prev, { message: messageToSend, recipaent: recipient }]);
 
-      // Store decrypted message in local database
-      const timestamp = new Date().toISOString();
-      await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend, timestamp);
-      await updateSyncInfo(db, `${user.id}_${recipient.id}`, timestamp);
+      // Note: Don't update sync_info here - only update from server timestamps to maintain consistency
       // Encrypt message for transmission
       const encryptedMessage = encryptMessage(messageToSend);
       if (!encryptedMessage) {
         console.error("Failed to encrypt message");
         return;
       }
-
+      
       socket.emit("send-message", {
         message: encryptedMessage,
-        recipaent: recipient,
+        to: recipient,
       });
-
-      await postMessage(user?.id, recipient?.id, encryptedMessage, token);
+      
+      // Store decrypted message in local database
+      const timestamp = new Date().toISOString();
+      // console.log(timestamp)
+      await insertRealtimeMessage(db, user?.id, recipient?.id, messageToSend, timestamp);
+      // await postMessage(user?.id, recipient?.id, encryptedMessage, token);
 
       await sendNotification({
         userId: recipient?.id,
-        title: `${recipient.username} texted you`,
+        title: `${user?.username} texted you`,
         body: messageToSend
       }, selectorToken)
     } catch (error) {
@@ -116,16 +119,13 @@ export const ChatRoom = () => {
     }
   };
 
-  // Fetching status
-  const { status } = useSocketConnection(user?.id);
-
   //useEffect
   useEffect(() => {
     if (route.params?.recipient) {
       setRecipient(route.params?.recipient);
-      // setSocket(route.params?.socket);
+      // setIsOnline(route.params?.isOnline);
     }
-  }, [route.params?.recipient]);
+  }, [route.params?.recipient, route.params?.isOnline]);
 
   useEffect(() => {
     setUser(selectorUser);
@@ -143,17 +143,17 @@ export const ChatRoom = () => {
         // Get sync info
         const syncInfo = await getSyncInfo(db, chatId);
         const afterTime = syncInfo?.last_synced_at || 0;
-        
+        // console.log("Local DB Sync Info: ", syncInfo);
         // First, try to load messages from local database
         const localMessages = await getMessagesForUsers(db, user.id, recipient.id) || [];
-        const serverResponse = await fetchAllMessages(user?.id, recipient?.id, afterTime, token);
+        const serverResponse = await fetchAllMessages(user?.id, recipient?.id, encodeURIComponent(afterTime), token);
         const serverChats = serverResponse?.chats || [];
         
-        console.log('Local messages count:', localMessages.length);
-        console.log('Server messages count:', serverChats.length);
+        // console.log('Local messages count:', localMessages.length);
+        // console.log('Server messages count:', serverChats.length);
         
         if (serverChats.length === 0 && localMessages.length === 0) {
-          console.log('No messages found in either local or server data');
+          // console.log('No messages found in either local or server data');
           setAllMessages([]);
           setIsLoading(false);
           return;
@@ -185,18 +185,18 @@ export const ChatRoom = () => {
   const processAndStoreServerMessages = async (serverChats, localChats) => {
     try {
       setIsLoading(true);
-      setIsDecoding(true);
       setMsgLength(serverChats.length);
-
+      
       const localMessages = localChats.map((msg) => ({
         message: msg.message,
         recipaent: {
           email: msg.from_id === user.id ? recipient.email : user.email
         },
       }));
-
-      setAllMessages(localMessages);
       
+      setAllMessages(localMessages);
+      setIsLoading(false);
+      setIsDecoding(true);
       const messages = serverChats.map((msg) => {
         const isFromCurrentUser = msg.from_id === user.id;
         return {
@@ -219,10 +219,13 @@ export const ChatRoom = () => {
       }));
 
       await batchInsertMessages(db, messagesToStore);
-      await updateSyncInfo(db, `${user.id}_${recipient.id}`, serverChats[serverChats.length - 1].message_time);
+      // Store server's original timestamp format to maintain consistency
+      const lastServerTime = serverChats[serverChats.length - 1].message_time;
+      
+      // console.log("Last Server Time: ", lastServerTime);
+      await updateSyncInfo(db, `${user.id}_${recipient.id}`, lastServerTime);
       setIsDecoding(false);
-      setIsLoading(false);
-      console.log(`Loaded ${messages.length} messages from server`);
+      // console.log(`Loaded ${messages.length} messages from server`);
     } catch (error) {
       console.error('Error processing server messages:', error);
       setIsDecoding(false);
@@ -241,22 +244,24 @@ export const ChatRoom = () => {
 
   // Handle incoming messages
   useEffect(() => {
-    if (!socket || !db) return;
+    if (!socket || !db || !recipient) return;
 
-    const handleReceiveMessage = async (msg) => {
+    const handleReceiveMessage = async ({message, to, from, chatTime}) => {
       try {
-        console.log("Received message:", msg);
-        const decryptedMessage = decryptMessage(msg.message, false);
+        console.log("Received message:",  message);
+        if (!recipient || String(from) !== String(recipient?.id)) return;
+
+        const decryptedMessage = decryptMessage(message, false);
         if (decryptedMessage) {
           // Add to UI
           // console.log("Decrypted message:", decryptedMessage);
           setAllMessages((prev) => [
             ...prev,
-            { message: decryptedMessage, recipaent: msg.recipaent },
+            { message: decryptedMessage, recipaent: to },
           ]);
           // console.log(msg);
           // Store decrypted message in local database with timestamp
-          const timestamp = msg.timestamp || new Date().toISOString();
+          const timestamp = chatTime || new Date().toISOString();
           await insertRealtimeMessage(db, recipient?.id, user?.id, decryptedMessage, timestamp);
           await updateSyncInfo(db, `${user.id}_${recipient.id}`, timestamp);
         }
@@ -265,10 +270,23 @@ export const ChatRoom = () => {
       }
     };
 
+    const handleSentMessage = async ({chatTime}) => {
+      try {
+          // console.log("Sent message:",  chatTime);
+          const timestamp = chatTime || new Date().toISOString();
+          await updateSyncInfo(db, `${user.id}_${recipient.id}`, timestamp);
+
+      } catch (error) {
+        console.error("Error handling sent message:", error);
+      }
+    };
+
     socket.on("receive-message", handleReceiveMessage);
+    socket.on("message-sent", handleSentMessage);
 
     return () => {
       socket.off("receive-message", handleReceiveMessage);
+      socket.off("message-sent", handleSentMessage);
     };
   }, [socket, db, user]);
 
@@ -290,7 +308,7 @@ export const ChatRoom = () => {
             />
             <View style={{ flexDirection: 'column' }}>
               <Text style={styles.name}>{recipient?.username}</Text>
-              <Text style={styles.status}>{status?.includes(recipient?.id) ? "Online" : "Offline"}</Text>
+              <Text style={styles.status}>{isOnline ? "Online" : "Offline"}</Text>
             </View>
           </View>
         </View>

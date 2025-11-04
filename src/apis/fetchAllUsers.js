@@ -4,7 +4,6 @@ import axios from "axios";
 
 export const fetchAllUsers = async (token) => {
     try {
-        console.log(token);
         const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/users`, {
             headers: {
                 Authorization: `Bearer ${token}`,

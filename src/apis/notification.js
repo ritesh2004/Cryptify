@@ -4,7 +4,7 @@ import axios from "axios";
 
 //----------------------- Upload Push Token -----------------------//
 export const uploadPushToken = async (data, token) => {
-  console.log("Notification Data: ",data);
+  // console.log("Notification Data: ",data);
   try {
     const response = await axios.post(
       `${process.env.EXPO_PUBLIC_API_URL}/notification/upload-token`,
@@ -20,7 +20,7 @@ export const uploadPushToken = async (data, token) => {
       }
     );
     // console.log(response?.data);
-    return response?.data;
+    return response;
   } catch (error) {
     console.log("Error: ", error);
     return null;
@@ -48,3 +48,23 @@ export const sendNotification = async (data, token) => {
     return null;
   }
 };
+
+export const deleteToken = async (data, token) => {
+  try {
+    const response = await axios.post(
+      `${process.env.EXPO_PUBLIC_API_URL}/notification/delete-token`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
+        }
+      }
+    );
+    console.log(response.data);
+    return response;
+  } catch (error) {
+    console.log("Error: ", error);
+    return null;
+  }
+}

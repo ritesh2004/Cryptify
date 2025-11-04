@@ -16,6 +16,7 @@ import store from './src/redux/store';
 import { SQLiteProvider } from 'expo-sqlite'
 
 import { LogBox } from 'react-native';
+import { SocketProvider } from './src/contexts/SocketContext';
 
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
@@ -66,11 +67,12 @@ export default function App() {
       options={{ useNewConnection: false }}
     >
     <Provider store={store}>
-      <NavigationContainer>
-
-        <NavStacks />
-        {/* <Tabs/> */}
-      </NavigationContainer>
+      <SocketProvider>
+        <NavigationContainer>
+          <NavStacks />
+          {/* <Tabs/> */}
+        </NavigationContainer>
+      </SocketProvider>
     </Provider>
     </SQLiteProvider>
   );

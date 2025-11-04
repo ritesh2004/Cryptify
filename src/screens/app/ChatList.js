@@ -1,31 +1,25 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { FlatList, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native'
 import { Chats } from '../../components/Chats'
 import { responsiveHeight, responsiveScreenWidth, responsiveWidth } from 'react-native-responsive-dimensions'
 import { fetchAllUsers } from '../../apis/fetchAllUsers'
 import { useAppDispatch, useAppSelector } from '../../redux/hooks'
 import { useSocketConnection } from '../../socket/useSockets'
 import {useSQLiteContext} from 'expo-sqlite';
-import { fetchChatsForUser } from '../../apis/fetchChatsForUser'
-import { DecodeAll } from '../../utils/DecodeAll'
 import { loadDatabase } from '../../utils/loadDatabase'
-import { setDbName, setIsBackup } from '../../redux/slices/dbSlice'
-import SockContext from '../../contexts/SockContext'
+import { setIsBackup } from '../../redux/slices/dbSlice'
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { logout } from '../../redux/slices/LoginSlice'
-import { usePushNotifications } from '../../hooks/usePushNotifications';
-import { uploadPushToken } from '../../apis/notification';
-import * as SecureStore from 'expo-secure-store';
-import { useSQLiteDevTools } from 'expo-sqlite-devtools';
+import { useSocket } from '../../contexts/SocketContext'
 
 export const ChatList = () => {
     // Database
     const db = useSQLiteContext();
-    useSQLiteDevTools(db);
+    // useSQLiteDevTools(db);
     // States
     const [chats, setChats] = useState();
     const [isDbInitialized, setIsDbInitialized] = useState(false);
-    const [pushToken, setPushToken] = useState();
+    const [refreshing, setRefreshing] = useState(false);
 
     // Selectors
     const selector = useAppSelector(state => state.login.token);
@@ -33,18 +27,28 @@ export const ChatList = () => {
     const isBackedup = useAppSelector(state => state.db.isBackup);
     const dbName = useAppSelector(state => state.db.dbName);
 
+    
     // Dispatch
     const dispatch = useAppDispatch();
-
+    
+    // Socket
+    const { users, setHasUnseen, socket } = useSocketConnection(user?.id, null);
+    const { onlineUsers, hasUnseen, markAsSeen } = useSocket();
+    
+    // Update chats when users change
+    useEffect(() => {
+        if (users && users.length > 0) {
+            setChats(users);
+        }
+    }, [users]);
     // Functions
     // Fetch chats
     const fetchChats = async () => {
         try {
             // Fetch chats
-            const {data} = await fetchAllUsers(selector);
-
+            const data = await fetchAllUsers(selector);
             if (data?.status === 200) {
-                setChats(data?.users);
+                setChats(data?.data?.users);
             }
             else if (data?.status === 401) {
                 dispatch(logout());
@@ -55,42 +59,22 @@ export const ChatList = () => {
         }
     }
 
-    // Upload push token for notification
-    const expoPushToken = usePushNotifications();
-
-    const enableNotification = async () => {
-        try {
-            console.log("Push TOken: ", expoPushToken)
-            const notification_info = await SecureStore.getItemAsync('notification_enabled');
-            const notification_info_parsed = JSON.parse(notification_info);
-            if (!notification_info_parsed?.isEnabled) {
-                console.log(expoPushToken, user.id)
-                if (!expoPushToken || !user.id) return;
-                const res = uploadPushToken({
-                    token: expoPushToken,
-                    userId: user.id
-                }, selector);
-                await SecureStore.setItemAsync('notification_enabled', JSON.stringify({isEnabled: true}));
-            }
-        } catch (error) {
-            console.log(error)
-            alert("Unable to enable notification!");
-        }
-    }
-
-    // useEffect(() => {
-    //     console.log("Token")
-    //     console.log(selector);
-    // },[selector])
+    // Refresh Control
+    const onRefresh = React.useCallback(() => {
+        setRefreshing(true);
+        fetchChats();
+        setRefreshing(false);
+    }, []);
 
     // UseEffect
-    useEffect(() => {
-        fetchChats();
-    }, [])
 
     useEffect(() => {
-        enableNotification();
-    }, [expoPushToken, user])
+        if (!user) return;
+        fetchChats();
+        if (socket && !socket.connected) {
+            socket.connect();
+        }
+    }, [user])
 
     // Fetch all data from local database
     useEffect(() => {
@@ -100,8 +84,6 @@ export const ChatList = () => {
             const chats = await db.getAllAsync('SELECT * FROM chats;');
         };
         fetchData();
-        console.log("Chats");
-        console.log(chats);
     },[isBackedup, isDbInitialized])
 
     // Load data from Remote Database to Local Database
@@ -136,12 +118,13 @@ export const ChatList = () => {
             </View>
 
             <View style={styles.flatlist}>
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 <FlatList
                     data={chats}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => {
                         return (
-                            <Chats recipient={item} />
+                            <Chats recipient={item} onlineUsers={onlineUsers} markAsSeen={markAsSeen} hasUnseen={hasUnseen}/>
                         )
                     }}
                 />

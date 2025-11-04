@@ -13,7 +13,7 @@ export const fetchAllMessages = async (senderId, receiverId, afterTime, token) =
                 Accept: 'application/json',
             }
         });
-        console.log("response", response.data);
+        // console.log("response", response.data);
         return response.data;
     } catch (error) {
         console.log(error);

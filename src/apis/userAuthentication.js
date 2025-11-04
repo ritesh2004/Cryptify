@@ -4,7 +4,7 @@ import axios from "axios";
 
 //----------------------- Login -----------------------//
 export const login = async (data) => {
-    console.log(data);
+    // console.log(data);
   try {
     const response = await axios.post(
       `${process.env.EXPO_PUBLIC_API_URL}/user/login`,
@@ -26,7 +26,7 @@ export const register = async (data) => {
         `${process.env.EXPO_PUBLIC_API_URL}/user/create`,
         data
         );
-        console.log(response.data);
+        // console.log(response.data);
         return response.data;
     } catch (error) {
         return error.response.data;
@@ -36,13 +36,13 @@ export const register = async (data) => {
 // ------------------------ Store Biometric Data ------------------------ //
 export const storeBiometricData = async (data, token) => {
     try {
-        console.log("Storing biometric data...");
+        // console.log("Storing biometric data...");
         const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/user/biometric/store`, data, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
         });
-        console.log("Biometric data stored successfully: ", response.data);
+        // console.log("Biometric data stored successfully: ", response.data);
         return response.data;
     } catch (error) {
         return null;
@@ -52,9 +52,9 @@ export const storeBiometricData = async (data, token) => {
 // ------------------------ Verify Biometric Data ------------------------ //
 export const verifyBiometricData = async (data) => {
     try {
-        console.log("Verifying biometric data...");
+        // console.log("Verifying biometric data...");
         const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/user/biometric/verify`, data);
-        console.log("Biometric data verified successfully: ", {accessToken: response.data.accessToken, user: {id: response.data.user.id, username: response.data.user.username, email: response.data.user.email}});
+        // console.log("Biometric data verified successfully: ", {accessToken: response.data.accessToken, user: {id: response.data.user.id, username: response.data.user.username, email: response.data.user.email}});
         return response.data;
     } catch (error) {
         console.log("Error verifying biometric data: ", error);

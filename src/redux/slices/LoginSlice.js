@@ -31,12 +31,21 @@ export const loginSlice = createSlice({
         state.isLoggedIn = false;
         state.token = null;
         state.user = null;
+        SecureStore.deleteItemAsync('notification_enabled');
+    },
+    updateUserProfile: (state, action) => {
+        if (state.user) {
+            state.user = {
+                ...state.user,
+                ...action.payload
+            };
+        }
     }
   }
 })
 
 // Export the generated action creators for use in components
-export const { loginSuccess,logout } = loginSlice.actions
+export const { loginSuccess, logout, updateUserProfile } = loginSlice.actions
 
 // Export the slice reducer for use in the store configuration
 export default loginSlice.reducer

@@ -11,7 +11,6 @@ import { ChatRoom } from '../screens/app/ChatRoom';
 import { GalleryScreen } from '../screens/app/GalleryScreen';
 import { useAppSelector } from '../redux/hooks';
 import { clearPersistedStorage } from '../redux/store';
-import { SockProvider } from '../contexts/SockContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,7 +35,6 @@ const NavStacks = () => {
   }
   // clearPersistedStorage();
   return (
-    <SockProvider>
       <Stack.Navigator initialRouteName='Tabs'
         screenOptions={{
           gestureEnabled: true,
@@ -48,7 +46,6 @@ const NavStacks = () => {
         <Stack.Screen name="Chatroom" component={ChatRoom} options={{ headerShown: false }} />
         <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
-    </SockProvider>
   )
 
 }

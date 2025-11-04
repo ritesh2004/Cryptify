@@ -2,11 +2,12 @@ import React, { useState } from 'react'
 import { FlatList, StyleSheet, Text, View,TouchableOpacity } from 'react-native'
 import { responsiveHeight, responsiveWidth } from 'react-native-responsive-dimensions'
 import { Avatar } from '../../components/Avatar'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 
 export const GalleryScreen = () => {
     const navigation = useNavigation();
-    const [selectedAvatar, setSelectedAvatar] = useState(null)
+    const route = useRoute();
+    const [selectedAvatar, setSelectedAvatar] = useState(route.params?.initialAvatar || null)
     const avatars = [
         "https://res.cloudinary.com/drctt42py/image/upload/v1728644229/chatapp-avatars/9_ogo64q.png",
         "https://res.cloudinary.com/drctt42py/image/upload/v1728654519/chatapp-avatars/Avatar_for_Chat_App_x3u1jz.png",
@@ -43,8 +44,28 @@ export const GalleryScreen = () => {
             </View>
 
             <View>
-                <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Signup",{avatar:selectedAvatar})}>
-                    <Text style={styles.buttonText}>Select Avatar</Text>
+                <TouchableOpacity 
+                    style={[styles.button, !selectedAvatar && { opacity: 0.5 }]} 
+                    onPress={() => {
+                        if (selectedAvatar) {
+                            if (route.params?.from === 'profile') {
+                                // If coming from profile, go back with the selected avatar
+                                navigation.navigate({
+                                    name: 'Profile',
+                                    params: { avatar: selectedAvatar },
+                                    merge: true
+                                });
+                            } else {
+                                // Default to signup flow
+                                navigation.navigate('Signup', { avatar: selectedAvatar });
+                            }
+                        }
+                    }}
+                    disabled={!selectedAvatar}
+                >
+                    <Text style={styles.buttonText}>
+                        {route.params?.from === 'profile' ? 'Select Avatar' : 'Continue to Sign Up'}
+                    </Text>
                 </TouchableOpacity>
             </View>
         </View>

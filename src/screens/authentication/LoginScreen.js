@@ -62,12 +62,12 @@ export const LoginScreen = () => {
         if (result.success) {
             // Handle successful authentication
             setIsLoading(true);
-            console.log('Authentication successful');
+            // console.log('Authentication successful');
             const storedUser = await SecureStore.getItemAsync('user');
             const privateKey = await SecureStore.getItemAsync('biometricPrivateKey');
             if (storedUser && privateKey) {
                 const user = JSON.parse(storedUser);
-                console.log("Stored User: ", user);
+                // console.log("Stored User: ", user);
                 const payload = { user: user?.id, exp: dayjs().add(10, 'minutes').unix() };
                 const md = forge.md.sha256.create();
                 md.update(JSON.stringify(payload), 'utf8');
@@ -101,9 +101,6 @@ export const LoginScreen = () => {
     const dispatch = useAppDispatch();
     // Selector
     const selector = useAppSelector(state => state.login.token);
-    useEffect(() => {
-        console.log(selector);
-    }, [selector])
 
     // Functions
     // Handle the login process
@@ -116,7 +113,6 @@ export const LoginScreen = () => {
                 setErrorMessage('Invalid username or password');
                 return;
             }
-
             dispatch(loginSuccess(data));
             setUser('');
             setPassword('');
